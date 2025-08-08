@@ -1,18 +1,18 @@
-import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabase'
 
-export default function CountdownViewer() {
+export default function CountdownPage() {
   const router = useRouter()
   const { token } = router.query
-
   const [countdown, setCountdown] = useState(null)
-  const [error, setError] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(null)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     if (!token) return
 
-    async function fetchCountdown() {
+    const fetchCountdown = async () => {
       const { data, error } = await supabase
         .from('countdowns')
         .select('*')
@@ -20,75 +20,96 @@ export default function CountdownViewer() {
         .single()
 
       if (error || !data) {
-        setError('Countdown not found.')
+        console.error('Countdown not found:', error)
+        setNotFound(true)
       } else {
         setCountdown(data)
+        updateTimeLeft(data.target_time)
       }
     }
 
     fetchCountdown()
   }, [token])
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-red-600 mb-2">Error</h1>
-          <p className="text-gray-700">{error}</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!countdown) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading countdown...</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`min-h-screen flex flex-col items-center justify-center text-white ${countdown.color || 'bg-black'} p-6`}>
-      <h1 className="text-4xl font-bold mb-4 text-center">{countdown.title}</h1>
-      {countdown.description && (
-        <p className="text-lg mb-6 text-center opacity-90">{countdown.description}</p>
-      )}
-      <CountdownTimer targetTime={countdown.target_time} />
-    </div>
-  )
-}
-
-function CountdownTimer({ targetTime }) {
-  const [remaining, setRemaining] = useState('')
-
   useEffect(() => {
-    function update() {
-      const now = new Date()
-      const target = new Date(targetTime)
-      const diff = target - now
+    if (!countdown) return
 
-      if (diff <= 0) {
-        setRemaining('Time’s up!')
-        return
-      }
+    const interval = setInterval(() => {
+      updateTimeLeft(countdown.target_time)
+    }, 1000)
 
-      const seconds = Math.floor((diff / 1000) % 60)
-      const minutes = Math.floor((diff / 1000 / 60) % 60)
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24)
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    return () => clearInterval(interval)
+  }, [countdown])
 
-      setRemaining(`${days}d ${hours}h ${minutes}m ${seconds}s`)
+  const updateTimeLeft = (target) => {
+    const now = new Date()
+    const targetTime = new Date(target)
+    const diff = targetTime - now
+
+    if (diff <= 0) {
+      setTimeLeft('🎉 It’s time!')
+      return
     }
 
-    update()
-    const interval = setInterval(update, 1000)
-    return () => clearInterval(interval)
-  }, [targetTime])
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24)
+    const minutes = Math.floor((diff / (1000 * 60)) % 60)
+    const seconds = Math.floor((diff / 1000) % 60)
+
+    setTimeLeft(
+      `${days}d ${hours}h ${minutes}m ${seconds}s`
+    )
+  }
+
+  if (notFound) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-white px-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Countdown not found</h1>
+          <p className="mt-2 text-gray-500">Make sure the link or passphrase is correct.</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!countdown || timeLeft === null) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-white">
+        <p>Loading...</p>
+      </main>
+    )
+  }
 
   return (
-    <div className="text-3xl font-mono bg-white/20 px-6 py-3 rounded shadow">
-      {remaining}
-    </div>
+    <main className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 px-4 py-12">
+      <div className="max-w-lg w-full text-center bg-gray-100 dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          {countdown.title}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          {countdown.description}
+        </p>
+
+        <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-4">
+          {timeLeft}
+        </div>
+
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Target: {new Date(countdown.target_time).toLocaleString()}
+        </p>
+
+        {countdown.repeat !== 'none' && (
+          <p className="text-sm mt-2 text-gray-500 dark:text-gray-400">
+            Repeats: {countdown.repeat}
+          </p>
+        )}
+
+        {countdown.remind_at !== 'none' && (
+          <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
+            Reminder: {countdown.remind_at.replaceAll('_', ' ')}
+          </p>
+        )}
+      </div>
+    </main>
   )
 }
