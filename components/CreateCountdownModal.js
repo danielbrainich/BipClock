@@ -1,96 +1,159 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { generateToken } from '../lib/generateToken'
 import { supabase } from '../lib/supabase'
+import { generateToken } from '../lib/generateToken'
 
 export default function CreateCountdownModal({ onClose, onCreated }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [color, setColor] = useState('#4f46e5')
-  const [targetTime, setTargetTime] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
+  const [allDay, setAllDay] = useState(true)
+  const [repeat, setRepeat] = useState('none')
+  const [remindAt, setRemindAt] = useState('none')
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setSubmitting(true)
+    setLoading(true)
 
-    const token = generateToken()
+    try {
+      const token = generateToken(3)
+      const dateTime = allDay
+        ? new Date(`${date}T00:00:00Z`)
+        : new Date(`${date}T${time}:00Z`)
 
-    const { error } = await supabase.from('countdowns').insert([
-      {
-        title,
-        description,
-        color,
-        target_time: new Date(targetTime).toISOString(),
-        token,
-      },
-    ])
+      const { error } = await supabase.from('countdowns').insert([
+        {
+          title,
+          description,
+          target_time: dateTime.toISOString(),
+          all_day: allDay,
+          repeat,
+          remind_at: remindAt,
+          token,
+        },
+      ])
 
-    setSubmitting(false)
-
-    if (error) {
-      console.error('Error creating countdown:', error)
-    } else {
-      onCreated()
-      onClose()
+      if (error) throw error
+      onCreated(token)
+    } catch (err) {
+      alert('Failed to create countdown')
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-lg mx-4 rounded-lg shadow-xl p-6 relative">
-        {/* Close Button */}
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center px-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md relative shadow-lg">
         <button
+          className="absolute top-4 right-4 text-gray-500 hover:text-black dark:hover:text-white"
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white"
         >
-          <X size={24} />
+          <X />
         </button>
 
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Create Countdown</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          New Countdown
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             placeholder="Title"
+            className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white dark:border-gray-600"
             required
           />
-
           <textarea
-            placeholder="Description (optional)"
+            placeholder="Description"
+            className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white dark:border-gray-600"
           />
 
-          <div className="flex items-center space-x-4">
-            <label className="text-gray-800 dark:text-white">Color:</label>
+          <div>
+            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+              Date
+            </label>
             <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="w-10 h-10 border rounded"
-              title="Pick a color"
+              type="date"
+              className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
             />
           </div>
 
-          <input
-            type="datetime-local"
-            value={targetTime}
-            onChange={(e) => setTargetTime(e.target.value)}
-            className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            required
-          />
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-700 dark:text-gray-300">
+              All Day
+            </label>
+            <input
+              type="checkbox"
+              checked={allDay}
+              onChange={(e) => setAllDay(e.target.checked)}
+            />
+          </div>
+
+          {!allDay && (
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                Time
+              </label>
+              <input
+                type="time"
+                className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                required={!allDay}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+              Repeat
+            </label>
+            <select
+              className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
+              value={repeat}
+              onChange={(e) => setRepeat(e.target.value)}
+            >
+              <option value="none">None</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+              Remind Me
+            </label>
+            <select
+              className="w-full p-2 rounded border dark:bg-gray-700 dark:text-white"
+              value={remindAt}
+              onChange={(e) => setRemindAt(e.target.value)}
+            >
+              <option value="none">None</option>
+              <option value="at_time">At time</option>
+              <option value="1_hour_before">1 hour before</option>
+              <option value="1_day_before">1 day before</option>
+              <option value="1_week_before">1 week before</option>
+            </select>
+          </div>
 
           <button
             type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            disabled={loading}
           >
-            {submitting ? 'Creating...' : 'Create Countdown'}
+            {loading ? 'Creating...' : 'Create Countdown'}
           </button>
         </form>
       </div>
