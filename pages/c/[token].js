@@ -179,7 +179,14 @@ export default function CountdownPage() {
                     {copied ? "Copied!" : "Copy Link"}
                 </button>
             </div>
-
+            {toast && (
+                <div
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+                  bg-black/80 text-white text-sm px-4 py-2 rounded"
+                >
+                    {toast}
+                </div>
+            )}
             {/* Content */}
             <div className="max-w-lg w-full mx-auto text-center bg-gray-100 dark:bg-gray-800 rounded-xl p-6 shadow-lg">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">

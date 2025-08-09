@@ -12,8 +12,11 @@ export default function WalletPage() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
+
+    // Share toast (consistent with detail page)
     const [shareLink, setShareLink] = useState(null);
     const [copied, setCopied] = useState(false);
+
     const [errorMsg, setErrorMsg] = useState("");
 
     const fetchWalletAndCountdowns = useCallback(async () => {
@@ -65,12 +68,33 @@ export default function WalletPage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(shareLink);
-        setCopied(true);
-        setTimeout(() => {
-            setCopied(false);
-            setShareLink(null);
-        }, 1000);
+        if (!shareLink) return;
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(shareLink).then(() => {
+                setCopied(true);
+                setTimeout(() => {
+                    setCopied(false);
+                    setShareLink(null);
+                }, 1200);
+            });
+        } else {
+            // Fallback copy
+            try {
+                const ta = document.createElement("textarea");
+                ta.value = shareLink;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                setCopied(true);
+                setTimeout(() => {
+                    setCopied(false);
+                    setShareLink(null);
+                }, 1200);
+            } catch {
+                // If copy fails, just leave the toast up so user can select manually
+            }
+        }
     };
 
     return (
@@ -111,25 +135,6 @@ export default function WalletPage() {
                 </div>
             )}
 
-            {/* Share link toast */}
-            {shareLink && (
-                <div className="fixed bottom-6 right-6 bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 rounded-lg p-4 flex items-center gap-4 z-50 max-w-md">
-                    <div className="text-sm text-gray-800 dark:text-gray-200 break-all">
-                        {shareLink}
-                    </div>
-                    <button
-                        className={`px-3 py-1 text-sm rounded ${
-                            copied
-                                ? "bg-green-600 text-white"
-                                : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
-                        onClick={handleCopy}
-                    >
-                        {copied ? "Copied!" : "Copy"}
-                    </button>
-                </div>
-            )}
-
             {/* Create modal */}
             {showCreate && wallet && (
                 <CreateCountdownModal
@@ -137,6 +142,25 @@ export default function WalletPage() {
                     onClose={() => setShowCreate(false)}
                     onCreated={handleCreated}
                 />
+            )}
+
+            {/* Bottom-center dark toast (consistent with /c/[token]) */}
+            {shareLink && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                    <div className="flex items-center gap-3 bg-black/80 text-white text-sm px-4 py-2 rounded">
+                        <span className="break-all">{shareLink}</span>
+                        <button
+                            onClick={handleCopy}
+                            className={`px-3 py-1 rounded ${
+                                copied
+                                    ? "bg-green-600"
+                                    : "bg-white/15 hover:bg-white/25"
+                            }`}
+                        >
+                            {copied ? "Copied!" : "Copy"}
+                        </button>
+                    </div>
+                </div>
             )}
         </main>
     );
