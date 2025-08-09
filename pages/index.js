@@ -1,68 +1,74 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import CountdownTile from '../components/CountdownTile'
-import CreateCountdownModal from '../components/CreateCountdownModal'
-
+import Link from 'next/link'
+import CreateWalletModal from '../components/CreateWalletModal'
+import ImportWalletModal from '../components/ImportWalletModal'
 
 export default function Home() {
-  const [countdowns, setCountdowns] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
+  const [walletId, setWalletId] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
-    const fetchCountdowns = async () => {
-      const { data, error } = await supabase
-        .from('countdowns')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching countdowns:', error)
-      } else {
-        setCountdowns(data)
-      }
-
-      setLoading(false)
-    }
-
-    fetchCountdowns()
+    const id = typeof window !== 'undefined' ? localStorage.getItem('wallet_id') : null
+    if (id) setWalletId(id)
   }, [])
 
   return (
-    <main className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-          BipClock
-        </h1>
-        {/* CREATE BUTTON (we'll hook this up in step 2) */}
-        <button
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-          onClick={() => setShowModal(true)}
-        >
-          + New Countdown
-        </button>
+    <main className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-6">
+      <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">BipClock</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-300">
+          Accounts without accounts. Create a wallet for your countdowns and share individual links.
+        </p>
+
+        {walletId ? (
+          <div className="mt-8 space-y-3">
+            <Link
+              href={`/w/${walletId}`}
+              className="block w-full py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
+            >
+              Open My Wallet ({walletId})
+            </Link>
+
+            <button
+              onClick={() => setShowCreate(true)}
+              className="w-full py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              Create New Wallet
+            </button>
+
+            <button
+              onClick={() => setShowImport(true)}
+              className="w-full py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              Import Wallet
+            </button>
+          </div>
+        ) : (
+          <div className="mt-8 space-y-3">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="w-full py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
+            >
+              Create Wallet
+            </button>
+
+            <button
+              onClick={() => setShowImport(true)}
+              className="w-full py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              Import Wallet
+            </button>
+          </div>
+        )}
+
+        <p className="mt-6 text-xs text-gray-500 dark:text-gray-400">
+          Tip: bookmark your wallet URL for quick access.
+        </p>
       </div>
 
-      {loading ? (
-        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-      ) : countdowns.length === 0 ? (
-        <p className="text-gray-600 dark:text-gray-300">No countdowns yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {countdowns.map((cd) => (
-            <CountdownTile key={cd.id} countdown={cd} />
-          ))}
-        </div>
-      )}
-      {showModal && (
-        <CreateCountdownModal
-          onClose={() => setShowModal(false)}
-          onCreated={() => {
-            // Re-fetch countdowns after creation
-            window.location.reload()
-          }}
-        />
-      )}
+      {showCreate && <CreateWalletModal onClose={() => setShowCreate(false)} />}
+      {showImport && <ImportWalletModal onClose={() => setShowImport(false)} />}
     </main>
   )
 }
